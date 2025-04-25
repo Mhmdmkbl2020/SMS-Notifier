@@ -31,7 +31,7 @@ jobs:
         run: pyinstaller --onefile --windowed main.py
 
       - name: Upload EXE artifact
-        uses: actions/upload-artifact@v3.0.2
+        uses: actions/upload-artifact@v2
         with:
           name: SMS-Notifier-EXE
           path: dist/main.exe
