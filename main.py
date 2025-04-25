@@ -8,7 +8,7 @@ import threading
 # تخزين الإعدادات في متغير عام
 db_settings = {}
 
-# دالة لإنشاء الاتصال بقاعدة بيانات SQL Server باستخدام الإعدادات المخزنة.
+# دالة الاتصال بقاعدة بيانات SQL Server باستخدام الإعدادات المخزنة
 def connect_to_database():
     try:
         conn_str = (
@@ -24,8 +24,8 @@ def connect_to_database():
         print("خطأ الاتصال بقاعدة البيانات:", e)
         return None
 
-# دالة لاسترجاع الرسائل غير المرسلة من جدول SMSQueue.
-# يُفترض أن الجدول يحتوي على الأعمدة: id, phone_number, sms_message, sent
+# دالة استرجاع الرسائل غير المرسلة من جدول SMSQueue
+# يُفترض أن يحتوي الجدول على الأعمدة: id, phone_number, sms_message, sent
 def fetch_unsent_messages():
     conn = connect_to_database()
     if conn is None:
@@ -42,7 +42,7 @@ def fetch_unsent_messages():
         conn.close()
         return []
 
-# دالة لتحديث حالة الرسالة بعد الإرسال (تعيين sent = 1).
+# دالة تحديث حالة الرسالة بعد الإرسال (مثلاً تعيين sent = 1)
 def update_message_status(message_id):
     conn = connect_to_database()
     if conn is None:
@@ -59,31 +59,31 @@ def update_message_status(message_id):
         conn.close()
         return False
 
-# دالة لإرسال رسالة SMS عبر مودم GSM باستخدام أوامر AT.
+# دالة إرسال رسالة SMS عبر مودم GSM باستخدام أوامر AT
 def send_sms(com_port, phone_number, message_text):
     try:
         modem = serial.Serial(com_port, 9600, timeout=1)
-        time.sleep(1)  # الانتظار لبعض الوقت لجاهزية المودم
+        time.sleep(1)  # انتظار بسيط لجاهزية المودم
 
-        # إرسال أمر AT للتأكد من استجابة المودم
+        # إرسال أمر AT لاختبار استجابة المودم
         modem.write(b'AT\r')
         time.sleep(0.5)
         response = modem.readlines()
         print("استجابة المودم:", response)
 
-        # تحويل المودم إلى وضع النصوص (Text Mode)
+        # تحويل المودم إلى وضع الرسائل النصية (Text Mode)
         modem.write(b'AT+CMGF=1\r')
         time.sleep(0.5)
-        
+
         # إرسال أمر تحديد رقم الهاتف المستقبل
-        command = 'AT+CMGS="{}"\r'.format(phone_number)
-        modem.write(command.encode())
+        command = f'AT+CMGS="{phone_number}"\r'.encode()
+        modem.write(command)
         time.sleep(0.5)
-        
-        # إرسال نص الرسالة مع رمز Ctrl+Z ( \x1A ) لإنهاء الرسالة
+
+        # إرسال نص الرسالة مع رمز Ctrl+Z (\x1A) لإنهاء الرسالة
         full_message = message_text + "\x1A"
         modem.write(full_message.encode())
-        time.sleep(3)  # الانتظار لإتمام الإرسال
+        time.sleep(3)  # انتظار لإتمام الإرسال
 
         modem.close()
         print("تم إرسال الرسالة إلى:", phone_number)
@@ -92,7 +92,7 @@ def send_sms(com_port, phone_number, message_text):
         print("خطأ أثناء إرسال SMS:", e)
         return False
 
-# الدالة التي تعمل في الخيط الخلفي لتفقد قاعدة البيانات بشكل دوري.
+# دالة التفقد الدوري (Polling) في الخلفية
 def poll_database():
     com_port = db_settings['com_port']
     while db_settings.get('monitoring', False):
@@ -105,47 +105,44 @@ def poll_database():
             print(f"إرسال رسالة لـ {phone} ...")
             if send_sms(com_port, phone, msg):
                 update_message_status(message_id)
-        time.sleep(10)  # الانتظار 10 ثوانٍ قبل التفقد مرة أخرى
+        time.sleep(10)  # الانتظار 10 ثوانٍ قبل التحقق مرة أخرى
 
-# دالة بدء المراقبة في الخلفية.
+# دالة بدء المراقبة في الخلفية
 def start_monitoring():
     global db_settings
-    # قراءة بيانات الاتصال من الواجهة
     server = server_entry.get().strip()
     database = database_entry.get().strip()
     username = username_entry.get().strip()
     password = password_entry.get().strip()
     com_port = com_port_entry.get().strip()
-    
+
     if not (server and database and username and password and com_port):
         messagebox.showerror("خطأ", "يرجى ملء جميع الحقول!")
         return
-    
-    # تخزين الإعدادات
+
+    # تخزين الإعدادات المُدخلة
     db_settings['server'] = server
     db_settings['database'] = database
     db_settings['username'] = username
     db_settings['password'] = password
     db_settings['com_port'] = com_port
     db_settings['monitoring'] = True
-    
-    # بدء الخيط الخلفي للمراقبة
+
     threading.Thread(target=poll_database, daemon=True).start()
     messagebox.showinfo("تم التشغيل", "تم تشغيل المراقبة في الخلفية.")
 
-# دالة إيقاف المراقبة.
+# دالة لإيقاف المراقبة
 def stop_monitoring():
     db_settings['monitoring'] = False
     messagebox.showinfo("متوقف", "تم إيقاف المراقبة.")
 
-# إنشاء الواجهة الرئيسية باستخدام tkinter.
+# إنشاء واجهة المستخدم باستخدام tkinter
 root = tk.Tk()
 root.title("SMS Notifier - Background Monitoring")
 
 frame = ttk.Frame(root, padding="10")
 frame.grid(row=0, column=0, sticky=(tk.W, tk.E))
 
-# مدخلات إعدادات قاعدة البيانات.
 ttk.Label(frame, text="عنوان الخادم:").grid(row=0, column=0, sticky=tk.W, pady=2)
 server_entry = ttk.Entry(frame, width=30)
 server_entry.grid(row=0, column=1, pady=2)
@@ -162,12 +159,10 @@ ttk.Label(frame, text="كلمة المرور:").grid(row=3, column=0, sticky=tk.
 password_entry = ttk.Entry(frame, width=30, show="*")
 password_entry.grid(row=3, column=1, pady=2)
 
-# مدخل منفذ المودم.
 ttk.Label(frame, text="رقم منفذ GSM (مثلاً COM3):").grid(row=4, column=0, sticky=tk.W, pady=2)
 com_port_entry = ttk.Entry(frame, width=30)
 com_port_entry.grid(row=4, column=1, pady=2)
 
-# أزرار بدء وإيقاف المراقبة.
 start_button = ttk.Button(frame, text="بدء المراقبة", command=start_monitoring)
 start_button.grid(row=5, column=0, pady=10)
 
