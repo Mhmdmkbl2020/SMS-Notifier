@@ -30,8 +30,11 @@ jobs:
       - name: Build EXE with PyInstaller
         run: pyinstaller --onefile --windowed main.py
 
+      - name: List files in dist
+        run: dir dist
+
       - name: Upload EXE artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v2.3.1
         with:
           name: SMS-Notifier-EXE
           path: dist/main.exe
