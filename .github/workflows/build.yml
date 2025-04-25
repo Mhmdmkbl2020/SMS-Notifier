@@ -14,10 +14,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4  # تحديث إلى الإصدار v4
 
       - name: Set up Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5  # تحديث إلى الإصدار v5
         with:
           python-version: '3.9'
 
@@ -28,13 +28,23 @@ jobs:
           pip install pyinstaller
 
       - name: Build EXE with PyInstaller
-        run: pyinstaller --onefile --windowed main.py
+        run: |
+          pyinstaller --onefile --windowed --clean main.py  # إضافة --clean لتنظيف البناء القديم
+          echo "تم بناء الملف التنفيذي بنجاح"
+
+      - name: Verify EXE exists
+        run: |
+          if not exist dist\main.exe (
+            echo "خطأ: الملف التنفيذي غير موجود!"
+            exit 1
+          )
+        shell: cmd
 
       - name: List files in dist
         run: dir dist
 
       - name: Upload EXE artifact
-        uses: actions/upload-artifact@v2.3.1
+        uses: actions/upload-artifact@v4  # تحديث إلى الإصدار v4
         with:
           name: SMS-Notifier-EXE
           path: dist/main.exe
